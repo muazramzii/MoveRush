@@ -13,7 +13,13 @@ namespace MoveRush.Core.Events
     public static class EventBus<T> where T : struct
     {
         private static readonly List<Action<T>> Subscribers = new List<Action<T>>(8);
-        private static readonly List<Action<T>> DispatchBuffer = new List<Action<T>>(8);
+
+        /// <summary>
+        /// Spare dispatch buffers. Each publish takes its own buffer and gives it back afterwards,
+        /// so a nested publish cannot disturb the one already in flight, while the steady state
+        /// still reuses buffers instead of allocating one per event.
+        /// </summary>
+        private static readonly Stack<List<Action<T>>> BufferPool = new Stack<List<Action<T>>>(2);
 
         /// <summary>
         /// Announces this channel to the registry the first time it is touched, so a single
@@ -49,8 +55,9 @@ namespace MoveRush.Core.Events
         }
 
         /// <summary>
-        /// Publishes an event to every subscriber. Handlers are copied before dispatch so a
-        /// handler may safely subscribe or unsubscribe while the event is being delivered.
+        /// Publishes an event to every subscriber. Handlers are copied into a buffer owned by this
+        /// call, so a handler may safely subscribe, unsubscribe, or publish this same event type
+        /// again without disturbing the dispatch already in flight.
         /// A throwing handler is logged and never prevents the remaining handlers from running.
         /// </summary>
         /// <param name="payload">Event data to broadcast.</param>
@@ -61,22 +68,42 @@ namespace MoveRush.Core.Events
                 return;
             }
 
-            DispatchBuffer.Clear();
-            DispatchBuffer.AddRange(Subscribers);
+            List<Action<T>> buffer = RentBuffer();
+            buffer.AddRange(Subscribers);
 
-            for (int i = 0; i < DispatchBuffer.Count; i++)
+            try
             {
-                try
+                for (int i = 0; i < buffer.Count; i++)
                 {
-                    DispatchBuffer[i].Invoke(payload);
-                }
-                catch (Exception exception)
-                {
-                    Log.Exception(exception, $"EventBus<{typeof(T).Name}> handler failed.");
+                    try
+                    {
+                        buffer[i].Invoke(payload);
+                    }
+                    catch (Exception exception)
+                    {
+                        Log.Exception(exception, $"EventBus<{typeof(T).Name}> handler failed.");
+                    }
                 }
             }
+            finally
+            {
+                ReturnBuffer(buffer);
+            }
+        }
 
-            DispatchBuffer.Clear();
+        /// <summary>Takes a dispatch buffer, reusing a spare one when the pool has any.</summary>
+        /// <returns>An empty buffer owned by the current publish.</returns>
+        private static List<Action<T>> RentBuffer()
+        {
+            return BufferPool.Count > 0 ? BufferPool.Pop() : new List<Action<T>>(8);
+        }
+
+        /// <summary>Empties a dispatch buffer and puts it back for the next publish.</summary>
+        /// <param name="buffer">Buffer to recycle.</param>
+        private static void ReturnBuffer(List<Action<T>> buffer)
+        {
+            buffer.Clear();
+            BufferPool.Push(buffer);
         }
 
         /// <summary>

@@ -136,11 +136,30 @@ namespace MoveRush.Gameplay.Pooling
 
             while (available.Count > 0)
             {
-                T instance = available.Pop();
-                if (instance != null)
-                {
-                    Object.Destroy(instance.gameObject);
-                }
+                DestroyInstance(available.Pop());
+            }
+        }
+
+        /// <summary>
+        /// Destroys one instance using the right call for the current context. Editor tooling and
+        /// tests tear pools down outside play mode, where the deferred <c>Destroy</c> is rejected
+        /// and would leave the object alive.
+        /// </summary>
+        /// <param name="instance">Instance to destroy.</param>
+        private static void DestroyInstance(T instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Object.Destroy(instance.gameObject);
+            }
+            else
+            {
+                Object.DestroyImmediate(instance.gameObject);
             }
         }
 
