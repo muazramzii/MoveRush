@@ -163,5 +163,24 @@ namespace MoveRush.Tests
 
             Assert.AreEqual(4, pool.CountInactive);
         }
+
+        /// <summary>
+        /// Clear is the teardown path PoolService runs on every scene unload. If it left instances
+        /// alive they would accumulate across scene loads, which is slow drift that is painful to
+        /// trace back to its cause later.
+        /// </summary>
+        [Test]
+        public void Clear_ReturnsAndDestroysEveryInstance()
+        {
+            ObjectPool<PoolableProbe> pool = new ObjectPool<PoolableProbe>(prefab, container, 3);
+            PoolableProbe live = pool.Rent();
+
+            pool.Clear();
+
+            Assert.AreEqual(0, pool.CountActive);
+            Assert.AreEqual(0, pool.CountInactive);
+            Assert.IsTrue(live == null, "A cleared instance should be destroyed, not just deactivated.");
+            Assert.AreEqual(0, container.childCount);
+        }
     }
 }
