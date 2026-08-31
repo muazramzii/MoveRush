@@ -53,6 +53,24 @@ Expected console output on a clean run:
 
 ---
 
+## Tests
+
+EditMode tests live in `Assets/_Project/Tests/EditMode` and run through
+`Window > General > Test Runner > EditMode > Run All`. The assembly is editor-only and guarded by
+`UNITY_INCLUDE_TESTS`, so it never reaches a player build.
+
+The suite covers the classes that carry rules rather than runtime behaviour: the state transition
+table, track geometry, the progression curve and profile guards, the save envelope round trip, the
+score and difficulty formulas, the four coin patterns, the object pool lifecycle, the service
+locator and the event bus.
+
+Config assets expose read-only properties over private serialised fields, so tests build their
+scenarios through `TestConfigBuilder`, which writes those backing fields by reflection — the same
+thing the inspector does. That keeps the production API free of setters that exist only for tests.
+
+Not covered: MonoBehaviour integration, scene streaming and anything needing a live play session.
+Those belong in a PlayMode suite, which is a separate piece of work.
+
 ## Architecture
 
 ```text
