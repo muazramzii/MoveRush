@@ -1,6 +1,8 @@
 using System;
+using System.Text.RegularExpressions;
 using MoveRush.Core.Events;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace MoveRush.Tests
@@ -117,9 +119,12 @@ namespace MoveRush.Tests
             EventBus<ProbeEvent>.Subscribe(_ => throw new InvalidOperationException("probe"));
             EventBus<ProbeEvent>.Subscribe(_ => reachedLast = true);
 
-            LogAssert.ignoreFailingMessages = true;
+            // Expecting the exact entries asserts the failure was reported, which a blanket
+            // suppression would not, and leaves unrelated errors still able to fail the test.
+            LogAssert.Expect(LogType.Error, new Regex("EventBus<ProbeEvent> handler failed"));
+            LogAssert.Expect(LogType.Exception, new Regex("probe"));
+
             EventBus<ProbeEvent>.Publish(new ProbeEvent(1));
-            LogAssert.ignoreFailingMessages = false;
 
             Assert.IsTrue(reachedLast, "A throwing handler must not stop the ones behind it.");
         }
