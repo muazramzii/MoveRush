@@ -69,8 +69,8 @@ namespace MoveRush.Tests
         [Test]
         public void GetTargets_GameplayCanPauseAndEnd()
         {
-            Assert.Contains(GameState.Paused, (System.Collections.ICollection)GameStateTransitions.GetTargets(GameState.Gameplay));
-            Assert.Contains(GameState.GameOver, (System.Collections.ICollection)GameStateTransitions.GetTargets(GameState.Gameplay));
+            CollectionAssert.Contains(GameStateTransitions.GetTargets(GameState.Gameplay), GameState.Paused);
+            CollectionAssert.Contains(GameStateTransitions.GetTargets(GameState.Gameplay), GameState.GameOver);
         }
     }
 }
