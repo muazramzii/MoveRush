@@ -29,13 +29,16 @@ namespace MoveRush.Tests
             public string Id { get; }
         }
 
-        /// <summary>Starts every test from an empty locator.</summary>
+        /// <summary>
+        /// Removes only this fixture's own registration. Clearing the whole locator would give
+        /// the same isolation but would also destroy any unrelated state the editor session holds.
+        /// </summary>
         [SetUp]
-        public void SetUp() => ServiceLocator.Clear();
+        public void SetUp() => ServiceLocator.Unregister<IProbeService>();
 
-        /// <summary>Leaves the locator empty for whatever runs next.</summary>
+        /// <summary>Leaves nothing of this fixture behind for whatever runs next.</summary>
         [TearDown]
-        public void TearDown() => ServiceLocator.Clear();
+        public void TearDown() => ServiceLocator.Unregister<IProbeService>();
 
         [Test]
         public void Get_ReturnsTheRegisteredInstance()
